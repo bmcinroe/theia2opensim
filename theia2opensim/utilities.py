@@ -3,6 +3,47 @@ import numpy as np
 import opensim as osim
 import ezc3d
 import scipy
+import json
+
+class Trial:
+    """
+    Wrapper class for Theia trial data stored as a structured directory of JSON files.
+    The filepath is expected to contain at minimum the following subdirectories:
+        - 'joint_angles'
+        - 'keypoints'
+    
+    If the directories contain data for multiple players, use the 'player_id' argument (int) to select a specific player's data.
+
+    Attributes:
+        filepath (str): The path to the trial data directory.
+    """
+    def __init__(self, filepath, columns_to_ignore=[], label_map={}, player_id=0):
+        self.filepath = filepath
+        
+        self.angles = json.load(open(os.path.join(filepath, 'joint_angles', os.listdir(os.path.join(filepath, 'joint_angles'))[player_id])))
+        self.keypoints = json.load(open(os.path.join(filepath, 'keypoints', os.listdir(os.path.join(filepath, 'keypoints'))[player_id])))
+        
+        # This is a Y-Z space-fixed rotation needed to convert data collected from Theia
+        # to OpenSim's ground reference frame convention (X forward, Y up, Z right).
+        data_rotation = osim.Rotation()
+        data_rotation.setRotationFromTwoAnglesTwoAxes(1, # space-fixed
+                -0.5*np.pi, osim.CoordinateAxis(1), # Y rotation
+                -0.5*np.pi, osim.CoordinateAxis(2)) # Z rotation
+        self.data_rotation = data_rotation
+        
+        # This is an additional body-fixed rotation that effectively swaps the axes of
+        # the rotations collected from Theia to match OpenSim's ground reference frame
+        # convention (X forward, Y up, Z right), which is the convention used by the
+        # matching Frame elements in the generic model.
+        frame_rotation = osim.Rotation()
+        frame_rotation.setRotationToBodyFixedXY(osim.Vec2(0.5*np.pi))
+        self.frame_rotation = frame_rotation
+        
+        # Columns that should be ignored when processing the data.
+        self.columns_to_ignore = columns_to_ignore
+
+        # Map of original labels to new labels.
+        self.label_map = label_map
 
 class C3D:
     def __init__(self, filepath, columns_to_ignore=[], label_map={}):

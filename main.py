@@ -12,9 +12,9 @@ from theia2opensim.inverse_kinematics import run_inverse_kinematics
 # Import a trial from the Theia dataset located in the original data path (as defined in
 # the 'config.yaml' file) to a new location in this repository's "data" folder. The
 # paths below are relative to those two locations, respectively.
-original_trial_relpath = os.path.join('ACL Registry CMJ', 'Theia output data',
-                                          'Counter-Movement Jump Markerless 1')
-trial_relpath = os.path.join('acl', 'jump_1')
+original_trial_relpath = os.path.join('trial1')
+
+trial_relpath = os.path.join('trial1')
 import_data(original_trial_relpath, trial_relpath)
 
 # Step 2: Create the generic OpenSim model.
@@ -24,23 +24,33 @@ import_data(original_trial_relpath, trial_relpath)
 # orientation aligned with the ground frame (X forward, Y up, Z right). The added
 # offset frames will be a subcomponent of the existing offset frames in the model (e.g.,
 # '/jointset/hip_l/femur_l_offset/l_thigh').
+
+# TODO: cross-reference with Rajagopal2015 definitions
 offset_frame_map = {
-    'l_thigh': '/jointset/hip_l/femur_l_offset',
-    'l_shank': '/jointset/walker_knee_l/tibia_l_offset',
-    'l_foot': '/jointset/ankle_l/talus_l_offset',
-    'l_toes': '/jointset/mtp_l/toes_l_offset',
-    'r_thigh': '/jointset/hip_r/femur_r_offset',
-    'r_shank': '/jointset/walker_knee_r/tibia_r_offset',
-    'r_foot': '/jointset/ankle_r/talus_r_offset',
-    'r_toes': '/jointset/mtp_r/toes_r_offset',
-    'l_uarm': '/jointset/acromial_l/humerus_l_offset',
-    'l_larm': '/jointset/elbow_l/ulna_l_offset',
-    'l_hand': '/jointset/radius_hand_l/hand_l_offset',
-    'r_uarm': '/jointset/acromial_r/humerus_r_offset',
-    'r_larm': '/jointset/elbow_r/ulna_r_offset',
-    'r_hand': '/jointset/radius_hand_r/hand_r_offset',
-    'pelvis': '/bodyset/pelvis',
-    'torso': '/bodyset/torso',
+    # Lower body
+    'hip_r': '',
+    'knee_r': '',
+    'ankle_r': '',
+    'mtp_r': '',
+    'hip_l': '',
+    'knee_l': '',
+    'ankle_l': '',
+    'mtp_l': '',
+    
+    # Upper body
+    'shoulder_r': '',
+    'elbow_r': '',
+    'wrist_r': '',
+    'shoulder_l': '',
+    'elbow_l': '',
+    'wrist_l': '',
+    
+    
+    # Pelvis
+    'pelvis': '',
+    
+    # Torso
+    'torso': '',
 }
 
 # Create a generic model by adding new PhysicalOffsetFrames to an existing OpenSim model
