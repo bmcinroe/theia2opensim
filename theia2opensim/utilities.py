@@ -4,6 +4,88 @@ import opensim as osim
 import ezc3d
 import scipy
 import json
+import pandas as pd
+from typing import Dict, List
+
+def convert_to_mot(dirpath: str,
+                   version: int = 1,
+                   in_degrees: bool = False,
+                   out_path: str = None):
+    """
+    Convert a JSON file to a MOT file and save it to the specified path.
+    
+    Parameters:
+        dirpath (str): The path to the directory containing the JSON files to convert.
+        version (int): The version of the MOT file.
+        in_degrees (bool): Whether the data is in degrees.
+        out_path (str): The path to save the MOT file.
+    """
+    
+    # Return data from the specified subdirectory.
+    def resolve_file(subdir: str):
+        filename = os.listdir(os.path.join(dirpath, subdir))[0]
+        pathstring =  os.path.join(dirpath, subdir, filename)
+        with open(pathstring, 'r') as f:
+            return json.load(f)
+
+    # Load joint angles data, get joint names and series dimensions.
+    angles = resolve_file('joint_angles')
+    joints: Dict[str, List[float]] = angles["joints"]
+    joint_names = list(joints.keys())
+    n_rows_set = set([len(joints[name]) for name in joint_names])
+
+    # Check angle data for missing rows, then set number of rows.
+    if len(n_rows_set) != 1:
+        raise ValueError("Joint channels do not all have the same number of rows.")
+    n_rows = n_rows_set.pop()
+
+    # Load keypoints data and get pelvis translation.
+    keypoints = resolve_file('keypoints')
+    pelvis_tx, pelvis_tz, pelvis_ty = keypoints['keypoints']['pelvis']['x'], keypoints['keypoints']['pelvis']['z'], keypoints['keypoints']['pelvis']['y']
+        
+    # Load meta data and get camera fps.
+    meta = resolve_file('meta')
+    fps = meta['cameras']['fps']
+    
+    # Build time vector from fps and n_rows.
+    time_vector = np.arange(0, n_rows) / fps
+    
+    # Set num columns and in degrees flag.
+    n_cols = 1 + 3 + len(joint_names) # time + pelvis + joint_angles
+    in_degrees_str = 'yes' if in_degrees else 'no'
+    
+
+    def fmt(x):
+        """
+        Input: float
+        Output: string
+        
+        Format float to a string with up to 15 significant digits.
+        """
+        return(format(float(x), '.15g'))
+    
+    with open(out_path, 'w') as f:
+        f.write(f"Coordinates\n")
+        f.write(f"version={version}\n")
+        f.write(f"nRows={n_rows}\n")
+        f.write(f"nColumns={n_cols}\n")
+        f.write(f"inDegrees={in_degrees_str}\n")
+        f.write("\n")
+        f.write(
+            "If the header above contains a line with 'inDegrees', this indicates "
+            "whether rotational values are in degrees (yes) or radians (no).\n"
+        )
+        f.write("\n")
+        f.write("endheader\n")
+        
+        f.write("\t".join(["time"] + ["pelvis_tx", "pelvis_ty", "pelvis_tz"] + joint_names) + "\n")
+        
+        for i in range(n_rows):
+            row = [fmt(time_vector[i])] + [fmt(pelvis_tx[i]), fmt(pelvis_ty[i]), fmt(pelvis_tz[i])] + [fmt(joints[name][i]) for name in joint_names]
+            f.write("\t".join(row) + "\n")
+        
+    return None
+
 
 class Trial:
     """

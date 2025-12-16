@@ -25,32 +25,100 @@ import_data(original_trial_relpath, trial_relpath)
 # offset frames will be a subcomponent of the existing offset frames in the model (e.g.,
 # '/jointset/hip_l/femur_l_offset/l_thigh').
 
-# TODO: cross-reference with Rajagopal2015 definitions
+angle_map = {
+    # Pelvis DoFs
+    'pelvis_tx': 'pelvis_tx',
+    'pelvis_tz': 'pelvis_tz',
+    'pelvis_ty': 'pelvis_ty',
+    'pelvis_tilt': 'pelvis_tilt',
+    'pelvis_rotation': 'pelvis_rotation',
+    
+    # Lower body DoFs
+    'hip_flexion_r': 'hip_flexion_r',
+    'hip_adduction_r': 'hip_adduction_r',
+    'hip_rotation_r': 'hip_rotation_r',
+    'knee_angle_r': 'knee_angle_r',
+    'ankle_angle_r': 'ankle_angle_r',
+    'subtalar_angle_r': 'subtalar_angle_r',
+    '': 'mtp_angle_r',
+    'hip_flexion_l': 'hip_flexion_l',
+    'hip_adduction_l': 'hip_adduction_l',
+    'hip_rotation_l': 'hip_rotation_l',
+    'knee_angle_l': 'knee_angle_l',
+    'ankle_angle_l': 'ankle_angle_l',
+    'subtalar_angle_l': 'subtalar_angle_l',
+    '': 'mtp_angle_l',
+    
+    # Upper body DoFs
+    'lumbar_extension': 'lumbar_extension',
+    'lumbar_bending': 'lumbar_bending',
+    'lumbar_rotation': 'lumbar_rotation',
+    '': 'neck_extension',
+    '': 'neck_bending',
+    '': 'neck_rotation',
+    '': 'arm_flex_r',
+    '': 'arm_add_r',
+    '': 'arm_rot_r',
+    'elbow_flexion_r': 'elbow_flex_r',
+    'pro_sup_r': 'pro_sup_r',
+    'wrist_flexion_r': 'wrist_flex_r',
+    'wrist_deviation_r': 'wrist_dev_r',
+    '': 'arm_flex_l',
+    '': 'arm_add_l',
+    '': 'arm_rot_l',
+    'elbow_flexion_l': 'elbow_flex_l',
+    'pro_sup_l': 'pro_sup_l',
+    'wrist_flexion_l': 'wrist_flex_l',
+    'wrist_deviation_l': 'wrist_dev_l'
+    }
+
 offset_frame_map = {
     # Lower body
-    'hip_r': '',
-    'knee_r': '',
-    'ankle_r': '',
-    'mtp_r': '',
-    'hip_l': '',
-    'knee_l': '',
-    'ankle_l': '',
-    'mtp_l': '',
+    'hip_r': '/jointset/hip_r/femur_r_offset',
+    'knee_r': '/jointset/walker_knee_r/tibia_r_offset',
+    'ankle_r': '/jointset/subtalar_r/talus_r_offset',
+    'mtp_r': '/jointset/mtp_r/toes_r_offset',
+    'hip_l': '/jointset/hip_l/femur_l_offset',
+    'knee_l': '/jointset/walker_knee_l/tibia_l_offset',
+    'ankle_l': '/jointset/subtalar_l/talus_l_offset',
+    'mtp_l': '/jointset/mtp_l/toes_l_offset',
     
     # Upper body
-    'shoulder_r': '',
-    'elbow_r': '',
-    'wrist_r': '',
-    'shoulder_l': '',
-    'elbow_l': '',
-    'wrist_l': '',
+    'shoulder_r': '/jointset/acromial_r/humerus_r_offset',
+    'elbow_r': '/jointset/elbow_r/ulna_r_offset',
+    'wrist_r': '/jointset/radius_hand_r/hand_r_offset',
+    'shoulder_l': '/jointset/acromial_l/humerus_l_offset',
+    'elbow_l': '/jointset/elbow_l/ulna_l_offset',
+    'wrist_l': '/jointset/radius_hand_l/hand_l_offset',
     
     
     # Pelvis
-    'pelvis': '',
+    'pelvis': '/bodyset/pelvis',
     
     # Torso
-    'torso': '',
+    'torso': '/bodyset/torso',
+}
+
+# Map from Visual3D to raw Theia offset names.
+name_dict = {
+    'r_thigh': 'hip_r',
+    'r_shank': 'knee_r',
+    'r_foot': 'ankle_r',
+    'r_toes': 'mtp_r',
+    'l_thigh': 'hip_l',
+    'l_shank': 'knee_l',
+    'l_foot': 'ankle_l',
+    'l_toes': 'mtp_l',
+    
+    'r_uarm': 'shoulder_r',
+    'r_larm': 'elbow_r',
+    'r_hand': 'wrist_r',
+    'l_uarm': 'shoulder_l',
+    'l_larm': 'elbow_l',
+    'l_hand': 'wrist_l',
+    
+    'pelvis': 'pelvis',
+    'torso': 'torso',
 }
 
 # Create a generic model by adding new PhysicalOffsetFrames to an existing OpenSim model
@@ -75,6 +143,7 @@ torso_frame_offset = 0.05 # TODO: find a better way to automatically detect this
 create_generic_model(model_fpath, offset_frame_map, torso_frame_offset,
                      generic_model_fpath)
 
+
 # Step 3: Model scaling.
 # ----------------------
 # A map defining the rules for computing scale factors for each segment. Each rule is a
@@ -82,6 +151,7 @@ create_generic_model(model_fpath, offset_frame_map, torso_frame_offset,
 # 1 for Y, and 2 for Z. The scale factor for a segment is computed as the ratio of the
 # distance between the two Theia frames to the distance between the corresponding
 # offset frames in the model.
+
 scale_rules = {
     'pelvis':    [('pelvis', 'torso', 1),
                   ('l_thigh', 'r_thigh', 2)],
@@ -109,13 +179,25 @@ scale_rules['toes_r'] = deepcopy(scale_rules['calcn_r'])
 scale_rules['talus_l'] = deepcopy(scale_rules['calcn_l'])
 scale_rules['toes_l'] = deepcopy(scale_rules['calcn_l'])
 
+# Remap scale rules to use Theia frame names.
+scale_rules_remap = {
+    k: [
+        tuple(name_dict.get(x, x) if isinstance(x, str) else x for x in t)
+        for t in rules
+    ]
+    for k, rules in scale_rules.items()
+}
+
 # Use the Model::scale() method to scale the model. The scaled model is saved to the
 # data trial folder.
 trial_path = os.path.join('data', trial_relpath)
 c3d_filename = 'pose_0.c3d'
 scaled_model_name = 'jump_1_scaled'
+#scale_model(generic_model_fpath, trial_path, c3d_filename, offset_frame_map,
+#            scale_rules, scaled_model_name)
+
 scale_model(generic_model_fpath, trial_path, c3d_filename, offset_frame_map,
-            scale_rules, scaled_model_name)
+            scale_rules_remap, scaled_model_name)
 
 # Step 4: Adjust anthropometry.
 # ------------------------------
